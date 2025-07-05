@@ -62,7 +62,6 @@ services:
       SKIP_ASYNC_MIGRATIONS_SETUP: "1"
     depends_on:
       - posthog-migrate
-    entrypoint: /entrypoint.sh
   
   clickhouse:
     image: clickhouse/clickhouse-server:23.8

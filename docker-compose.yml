@@ -55,7 +55,6 @@ services:
       SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV4lQeJZaV6fIn7UMekAYMFV6y_v8QgWALUzOliP
       DATABASE_URL: "postgres://kong:kong@kong-database:5432/kong"
       REDIS_URL: "redis://redis:6379"
-      DISABLE_CLICKHOUSE: "true"
     depends_on:
       - kong-database
       - redis
@@ -65,4 +64,19 @@ services:
     ports:
       - "6379:6379"
   
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    ports:
+      - "9000:9000"    # Native protocol
+      - "8123:8123"    # HTTP interface
+      - "9009:9009"    # Interserver communication
+      - "9440:9440"    # HTTPS (what PostHog expects by default)
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
 

@@ -65,6 +65,7 @@ services:
         condition: service_healthy
       posthog-migrate:
         condition: service_completed_successfully
+
   
   clickhouse:
     image: clickhouse/clickhouse-server:23.8
@@ -112,7 +113,7 @@ services:
       CLICKHOUSE_DATABASE: default
     entrypoint: >
       sh -c "
-        apt-get update && apt-get install -y curl
+        apk add --no-cache curl
         && curl -s https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh -o /wait-for-it.sh
         && chmod +x /wait-for-it.sh
         && /wait-for-it.sh clickhouse:9000 --timeout=60 --strict --

@@ -53,7 +53,7 @@ services:
       - "8005:8005"
     environment:
       POSTHOG_DB_HOST: kong-database
-      POSTHOG_SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV4lQeJZaV6fIn7UMekAYMFV6y_v8QgWALUzOliP
+      SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV4lQeJZaV6fIn7UMekAYMFV6y_v8QgWALUzOliP
     depends_on:
       - kong-database
 

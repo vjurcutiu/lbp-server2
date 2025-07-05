@@ -61,7 +61,10 @@ services:
       CLICKHOUSE_DATABASE: default
       SKIP_ASYNC_MIGRATIONS_SETUP: "1"
     depends_on:
-      - posthog-migrate
+      clickhouse:
+        condition: service_healthy
+      posthog-migrate:
+        condition: service_completed_successfully
   
   clickhouse:
     image: clickhouse/clickhouse-server:23.8
@@ -78,6 +81,11 @@ services:
       CLICKHOUSE_DB: default
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: ""
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   posthog-database:
     image: postgres:13

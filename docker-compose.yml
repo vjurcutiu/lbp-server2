@@ -50,3 +50,11 @@ services:
     image: redis:6
     ports:
       - "6379:6379"
+
+  konga:
+    image: pantsel/konga
+    restart: unless-stopped
+    ports:
+      - "1337:1337"
+    environment:
+      NODE_ENV: production

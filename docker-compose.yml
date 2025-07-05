@@ -36,7 +36,6 @@ services:
       - kong-migrations
     ports:
       - "8000:8000"  # Public proxy port
-      - "8001:8001"  # Admin API (secure this!)
   
   fastapi:
     build:

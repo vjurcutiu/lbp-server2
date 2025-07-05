@@ -55,6 +55,7 @@ services:
       SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV4lQeJZaV6fIn7UMekAYMFV6y_v8QgWALUzOliP
       DATABASE_URL: "postgres://kong:kong@kong-database:5432/kong"
       REDIS_URL: "redis://redis:6379"
+      DISABLE_CLICKHOUSE: "true"
     depends_on:
       - kong-database
       - redis

@@ -53,7 +53,7 @@ services:
       - "8005:8005"
     environment:
       SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV4lQeJZaV6fIn7UMekAYMFV6y_v8QgWALUzOliP
-      DATABASE_URL: "postgres://postgres:yourpassword@kong-database:5432/postgres"
+      DATABASE_URL: "postgres://kong:kong@kong-database:5432/kong"
       REDIS_URL: "redis://redis:6379"
     depends_on:
       - kong-database

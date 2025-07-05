@@ -54,7 +54,14 @@ services:
     environment:
       SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV4lQeJZaV6fIn7UMekAYMFV6y_v8QgWALUzOliP
       DATABASE_URL: "postgres://postgres:yourpassword@kong-database:5432/postgres"
+      REDIS_URL: "redis://redis:6379"
     depends_on:
       - kong-database
+      - redis
 
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+  
 

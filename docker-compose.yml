@@ -52,25 +52,17 @@ services:
     ports:
       - "8005:8005"
     environment:
-      SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV4lQeJZaV6fIn7UMekAYMFV6y_v8QgWALUzOliP
-      DATABASE_URL: "postgres://kong:kong@kong-database:5432/kong"
+      SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV6y_v8QgWALUzOliP
+      DATABASE_URL: "postgres://posthog:posthog@posthog-database:5432/posthog"
       REDIS_URL: "redis://redis:6379"
       CLICKHOUSE_HOST: clickhouse
       CLICKHOUSE_PORT: 9000
       CLICKHOUSE_SECURE: "false"
       CLICKHOUSE_DATABASE: default
-    entrypoint: >
-      sh -c "
-        apk add --no-cache bash curl >/dev/null 2>&1 || apt-get update && apt-get install -y curl
-        && curl -s https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh -o /wait-for-it.sh
-        && chmod +x /wait-for-it.sh
-        && /wait-for-it.sh clickhouse:9000 --timeout=60 --strict -- /entrypoint.sh
-      "
-
-  redis:
-    image: redis:6
-    ports:
-      - "6379:6379"
+      SKIP_ASYNC_MIGRATIONS_SETUP: "1"
+    depends_on:
+      - posthog-migrate
+    entrypoint: /entrypoint.sh
   
   clickhouse:
     image: clickhouse/clickhouse-server:23.8
@@ -88,3 +80,36 @@ services:
       CLICKHOUSE_USER: default
       CLICKHOUSE_PASSWORD: ""
 
+  posthog-database:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: posthog
+      POSTGRES_DB: posthog
+      POSTGRES_PASSWORD: posthog
+    ports:
+      - 5433:5432  # or remove ports if only used in Docker network
+
+  posthog-migrate:
+    image: posthog/posthog:latest
+    depends_on:
+      - posthog-database
+      - clickhouse
+      - redis
+    environment:
+      SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV6y_v8QgWALUzOliP
+      DATABASE_URL: "postgres://posthog:posthog@posthog-database:5432/posthog"
+      REDIS_URL: "redis://redis:6379"
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 9000
+      CLICKHOUSE_SECURE: "false"
+      CLICKHOUSE_DATABASE: default
+    entrypoint: >
+      sh -c "
+        apt-get update && apt-get install -y curl
+        && curl -s https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh -o /wait-for-it.sh
+        && chmod +x /wait-for-it.sh
+        && /wait-for-it.sh clickhouse:9000 --timeout=60 --strict --
+        python manage.py migrate
+        && python manage.py migrate_clickhouse
+        && python manage.py run_async_migrations
+      "

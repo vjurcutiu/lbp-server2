@@ -113,3 +113,7 @@ services:
         && python manage.py migrate_clickhouse
         && python manage.py run_async_migrations
       "
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"

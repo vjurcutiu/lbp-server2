@@ -52,8 +52,9 @@ services:
     ports:
       - "8005:8005"
     environment:
-      POSTHOG_DB_HOST: kong-database
       SECRET_KEY: yt1BaekASDKO4OnrZ-0LqwvGLV4lQeJZaV6fIn7UMekAYMFV6y_v8QgWALUzOliP
+      DATABASE_URL: "postgres://postgres:yourpassword@kong-database:5432/postgres"
     depends_on:
       - kong-database
+
 

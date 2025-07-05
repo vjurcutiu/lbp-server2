@@ -1,0 +1,59 @@
+services:
+  kong-database:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_DB: kong
+      POSTGRES_PASSWORD: kong
+    ports:
+      - 5432:5432
+
+  kong-migrations:
+    image: kong:3.6
+    command: kong migrations bootstrap
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_PASSWORD: kong
+      KONG_PASSWORD: kong
+    depends_on:
+      - kong-database
+
+  kong:
+    restart: always
+    image: kong:3.6
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_PASSWORD: kong
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    depends_on:
+      - kong-database
+      - kong-migrations
+    ports:
+      - "8000:8000"  # Public proxy port
+      - "8001:8001"  # Admin API (secure this!)
+  
+  fastapi:
+    build:
+      context: ./backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8002
+    ports:
+      - "8002:8002"
+    restart: always
+
+  # Example: PostHog (adjust as needed)
+  posthog:
+    image: posthog/posthog:latest
+    ports:
+      - "8005:8005"
+    environment:
+      POSTHOG_DB_HOST: kong-database
+      POSTHOG_SECRET_KEY: mysecretkey
+    depends_on:
+      - kong-database
+

@@ -99,6 +99,7 @@ services:
       DB_USER: konga
       DB_PASSWORD: konga
       DB_DATABASE: konga
+      AUTO_MIGRATE: true
   
 
 volumes:

@@ -98,9 +98,9 @@ services:
       DB_PORT: 5432
       DB_USER: konga
       DB_PASSWORD: konga
-      DB_DATABASE: konga
-      AUTO_MIGRATE: true
-  
+      DB_DATABASE: konga      
+      AUTO_MIGRATE: "true"
+
 
 volumes:
   fastapi-db-data:

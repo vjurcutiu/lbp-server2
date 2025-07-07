@@ -81,6 +81,12 @@ services:
       - "1337:1337"
     environment:
       NODE_ENV: production
+      DB_ADAPTER: postgres
+      DB_HOST: kong-database
+      DB_PORT: 5432
+      DB_USER: kong 
+      DB_PASSWORD: kong
+      DB_DATABASE: konga
 
 volumes:
   fastapi-db-data:

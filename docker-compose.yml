@@ -104,3 +104,4 @@ services:
 
 volumes:
   fastapi-db-data:
+  konga-db-data:

@@ -74,6 +74,18 @@ services:
     ports:
       - "6379:6379"
 
+  konga-db:
+    image: postgres:11
+    environment:
+      POSTGRES_USER: konga
+      POSTGRES_PASSWORD: konga
+      POSTGRES_DB: konga
+    ports:
+      - "5444:5432"
+    volumes:
+      - konga-db-data:/var/lib/postgresql/data
+
+
   konga:
     image: pantsel/konga
     restart: unless-stopped
@@ -82,11 +94,13 @@ services:
     environment:
       NODE_ENV: production
       DB_ADAPTER: postgres
-      DB_HOST: kong-database
+      DB_HOST: konga-db
       DB_PORT: 5432
-      DB_USER: kong 
-      DB_PASSWORD: kong
+      DB_USER: konga
+      DB_PASSWORD: konga
       DB_DATABASE: konga
+
+    
 
 volumes:
   fastapi-db-data:

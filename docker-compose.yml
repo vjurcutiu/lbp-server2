@@ -36,6 +36,18 @@ services:
       - kong-migrations
     ports:
       - "8000:8000"  # Public proxy port
+
+  fastapi-db:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_USER: fastapi
+      POSTGRES_PASSWORD: fastapi
+      POSTGRES_DB: fastapi
+    ports:
+      - "5433:5432"  # Exposes on 5433 locally, inside Docker use service name 'fastapi-db'
+    volumes:
+      - fastapi-db-data:/var/lib/postgresql/data
   
   fastapi:
     build:
@@ -44,6 +56,10 @@ services:
     ports:
       - "8002:8002"
     restart: always
+    depends_on:
+      - fastapi-db
+    environment:
+      DATABASE_URL: postgresql://fastapi:fastapi@fastapi-db:5432/fastapi
 
   redis:
     image: redis:6
@@ -57,3 +73,6 @@ services:
       - "1337:1337"
     environment:
       NODE_ENV: production
+
+volumes:
+  fastapi-db-data:

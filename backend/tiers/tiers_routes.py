@@ -1,0 +1,101 @@
+from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy.orm import Session
+from database import get_db  # assumes you have a dependency that provides a DB session
+from tiers_models import MachineAccount, UserTier
+from typing import Optional
+
+router = APIRouter()
+
+def get_account(db: Session, machine_id: str) -> Optional[MachineAccount]:
+    return db.query(MachineAccount).filter_by(machine_id=machine_id).first()
+
+@router.get("/tier")
+def get_tier(machine_id: str, db: Session = get_db()):
+    account = get_account(db, machine_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Machine ID not found")
+    return {
+        "machine_id": account.machine_id,
+        "tier": account.tier.value,
+        "is_active": account.is_active,
+        "email": account.email,
+        "created_at": account.created_at,
+        "upgraded_at": account.upgraded_at,
+    }
+
+@router.post("/tier/upgrade")
+def upgrade_tier(machine_id: str, new_tier: UserTier, db: Session = get_db()):
+    account = get_account(db, machine_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Machine ID not found")
+    account.tier = new_tier
+    if new_tier == UserTier.pro:
+        from datetime import datetime
+        account.upgraded_at = datetime.utcnow()
+    db.commit()
+    return {"status": "success", "machine_id": machine_id, "tier": account.tier.value}
+
+@router.post("/tier/ban")
+def ban_user(machine_id: str, db: Session = get_db()):
+    account = get_account(db, machine_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Machine ID not found")
+    account.tier = UserTier.banned
+    account.is_active = False
+    db.commit()
+    return {"status": "banned", "machine_id": machine_id}
+
+@router.post("/tier/unban")
+def unban_user(machine_id: str, db: Session = get_db()):
+    account = get_account(db, machine_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Machine ID not found")
+    account.tier = UserTier.demo
+    account.is_active = True
+    db.commit()
+    return {"status": "unbanned", "machine_id": machine_id}
+
+@router.get("/tiers/all")
+def list_accounts(
+    tier: Optional[UserTier] = Query(None),
+    db: Session = get_db(),
+    limit: int = 100,
+    offset: int = 0,
+):
+    query = db.query(MachineAccount)
+    if tier:
+        query = query.filter_by(tier=tier)
+    accounts = query.offset(offset).limit(limit).all()
+    return [
+        {
+            "machine_id": acc.machine_id,
+            "tier": acc.tier.value,
+            "is_active": acc.is_active,
+            "email": acc.email,
+            "created_at": acc.created_at,
+            "upgraded_at": acc.upgraded_at,
+        }
+        for acc in accounts
+    ]
+
+# Utility for integration with payment_routes
+def set_user_pro(db: Session, machine_id: str, email: Optional[str] = None):
+    account = get_account(db, machine_id)
+    from datetime import datetime
+    if not account:
+        # Auto-create if doesn't exist
+        account = MachineAccount(
+            machine_id=machine_id,
+            tier=UserTier.pro,
+            is_active=True,
+            email=email,
+            upgraded_at=datetime.utcnow(),
+        )
+        db.add(account)
+    else:
+        account.tier = UserTier.pro
+        account.is_active = True
+        account.email = email or account.email
+        account.upgraded_at = datetime.utcnow()
+    db.commit()
+    return account

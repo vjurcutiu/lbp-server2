@@ -31,11 +31,19 @@ services:
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl, 0.0.0.0:80, 0.0.0.0:443 ssl
+      KONG_SSL_CERT: /certs/fullchain.pem
+      KONG_SSL_CERT_KEY: /certs/privkey.pem
     depends_on:
       - kong-database
       - kong-migrations
     ports:
-      - "8000:8000"  # Public proxy port
+      - "8000:8000"
+      - "8443:8443"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/certs:ro
 
   fastapi-db:
     image: postgres:13

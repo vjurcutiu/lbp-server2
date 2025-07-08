@@ -6,6 +6,8 @@ from payment.payment_routes import router as payment_router
 from tiers.tiers_routes import router as user_router
 from pinecone.pinecone_routes import router as pinecone_router
 
+from dotenv import load_dotenv
+load_dotenv()
 
 # DB: Create tables on startup
 Base.metadata.create_all(bind=engine)

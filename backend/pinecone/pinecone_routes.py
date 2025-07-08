@@ -1,91 +1,70 @@
-from fastapi import APIRouter, Request, Header
-from fastapi.responses import JSONResponse
-from pinecone_client import PineconeClient, PineconeAPIKeyError
+
+# pinecone_routes.py (FastAPI - uses Pinecone SDK directly!)
+from fastapi import APIRouter, Request, HTTPException, Depends
+from sqlalchemy.orm import Session
+from tiers_models import MachineAccount
+from database import get_db
+from pinecone import Pinecone
+import os
 
 router = APIRouter()
-pinecone_client = PineconeClient()
 
-def format_pinecone_error(e: Exception):
-    return JSONResponse(content={"error": str(e)}, status_code=500)
+def get_pinecone_index():
+    api_key = os.environ["PINECONE_API_KEY"]
+    environment = os.environ["PINECONE_ENV"]
+    index_name = os.environ["PINECONE_INDEX"]
+    client = Pinecone(api_key=api_key, environment=environment)
+    return client.Index(index_name)
 
-@router.post("/pinecone_upsert")
-async def pinecone_upsert(request: Request, x_machine_id: str = Header(None)):
-    data = await request.json()
-    try:
-        result = pinecone_client.upsert(
-            vectors=data["vectors"],
-            namespace=data.get("namespace"),
-            batch_size=data.get("batch_size", 100)
-        )
-        return JSONResponse(content={"result": result})
-    except PineconeAPIKeyError as e:
-        return format_pinecone_error(e)
-    except Exception as e:
-        return format_pinecone_error(e)
+def validate_machine_id(request: Request, db: Session):
+    machine_id = request.headers.get("X-Machine-Id")
+    if not machine_id:
+        raise HTTPException(status_code=403, detail="Missing machine ID")
+    account = db.query(MachineAccount).filter_by(machine_id=machine_id, is_active=True).first()
+    if not account:
+        raise HTTPException(status_code=403, detail="Invalid or banned machine ID")
+    return account
 
-@router.post("/pinecone_query")
-async def pinecone_query(request: Request, x_machine_id: str = Header(None)):
-    data = await request.json()
-    try:
-        result = pinecone_client.query(
-            vector=data["vector"],
-            top_k=data.get("top_k", 10),
-            namespace=data.get("namespace"),
-            filter=data.get("filter"),
-            include_values=data.get("include_values", False),
-            include_metadata=data.get("include_metadata", True),
-        )
-        return JSONResponse(content={"result": result})
-    except PineconeAPIKeyError as e:
-        return format_pinecone_error(e)
-    except Exception as e:
-        return format_pinecone_error(e)
+@router.post("/pinecone/upsert")
+async def upsert_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
+    validate_machine_id(request, db)
+    index = get_pinecone_index()
+    vectors = payload["vectors"]
+    namespace = payload.get("namespace")
+    batch_size = payload.get("batch_size", 100)
+    for i in range(0, len(vectors), batch_size):
+        batch = vectors[i:i+batch_size]
+        index.upsert(batch, namespace)
+    return {"status": "ok", "upserted": len(vectors)}
 
-@router.post("/pinecone_delete")
-async def pinecone_delete(request: Request, x_machine_id: str = Header(None)):
-    data = await request.json()
-    try:
-        result = pinecone_client.delete(
-            ids=data.get("ids"),
-            filter=data.get("filter"),
-            namespace=data.get("namespace"),
-        )
-        return JSONResponse(content={"result": result})
-    except PineconeAPIKeyError as e:
-        return format_pinecone_error(e)
-    except Exception as e:
-        return format_pinecone_error(e)
+@router.post("/pinecone/query")
+async def query_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
+    validate_machine_id(request, db)
+    index = get_pinecone_index()
+    return index.query(
+        vector=payload["vector"],
+        top_k=payload.get("top_k", 10),
+        namespace=payload.get("namespace"),
+        filter=payload.get("filter"),
+        include_values=payload.get("include_values", False),
+        include_metadata=payload.get("include_metadata", True),
+    )
 
-@router.post("/pinecone_fetch")
-async def pinecone_fetch(request: Request, x_machine_id: str = Header(None)):
-    data = await request.json()
-    try:
-        result = pinecone_client.fetch(
-            ids=data["ids"],
-            namespace=data.get("namespace"),
-        )
-        return JSONResponse(content={"result": result})
-    except PineconeAPIKeyError as e:
-        return format_pinecone_error(e)
-    except Exception as e:
-        return format_pinecone_error(e)
+@router.post("/pinecone/delete")
+async def delete_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
+    validate_machine_id(request, db)
+    index = get_pinecone_index()
+    return index.delete(
+        ids=payload.get("ids"),
+        filter=payload.get("filter"),
+        namespace=payload.get("namespace")
+    )
 
-@router.get("/pinecone_info")
-async def pinecone_info(x_machine_id: str = Header(None)):
-    try:
-        result = pinecone_client.info()
-        return JSONResponse(content={"result": result})
-    except PineconeAPIKeyError as e:
-        return format_pinecone_error(e)
-    except Exception as e:
-        return format_pinecone_error(e)
-
-@router.get("/pinecone_describe_index")
-async def pinecone_describe_index(x_machine_id: str = Header(None)):
-    try:
-        result = pinecone_client.describe_index()
-        return JSONResponse(content={"result": result})
-    except PineconeAPIKeyError as e:
-        return format_pinecone_error(e)
-    except Exception as e:
-        return format_pinecone_error(e)
+@router.post("/pinecone/fetch")
+async def fetch_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
+    validate_machine_id(request, db)
+    index = get_pinecone_index()
+    return index.fetch(
+        ids=payload["ids"],
+        namespace=payload.get("namespace")
+    )

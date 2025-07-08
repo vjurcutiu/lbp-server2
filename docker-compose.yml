@@ -7,6 +7,8 @@ services:
       POSTGRES_PASSWORD: kong
     ports:
       - 5432:5432
+    volumes:
+      - kong-db-data:/var/lib/postgresql/data
 
   kong-migrations:
     image: kong:3.6
@@ -44,6 +46,7 @@ services:
       - "443:443"
     volumes:
       - ./certs:/certs:ro
+      
 
   fastapi-db:
     image: postgres:13
@@ -105,3 +108,4 @@ services:
 volumes:
   fastapi-db-data:
   konga-db-data:
+  kong-db-data:

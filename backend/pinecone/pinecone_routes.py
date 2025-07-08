@@ -2,7 +2,7 @@
 # pinecone_routes.py (FastAPI - uses Pinecone SDK directly!)
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
-from tiers_models import MachineAccount
+from tiers.tiers_models import MachineAccount
 from database import get_db
 from pinecone import Pinecone
 import os

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
 from tiers.tiers_models import MachineAccount
 from database import get_db
-from pinecone import Pinecone
+from pinecone_engine import Pinecone
 import os
 
 router = APIRouter()

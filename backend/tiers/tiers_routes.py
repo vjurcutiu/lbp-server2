@@ -1,10 +1,10 @@
 
 print("[tiers_routes.py] tiers_routes.py imported")
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
 from database import get_db  # assumes you have a dependency that provides a DB session
-from tiers_models import MachineAccount, UserTier
+from .tiers_models import MachineAccount, UserTier
 from typing import Optional
 
 router = APIRouter()
@@ -14,7 +14,8 @@ def get_account(db: Session, machine_id: str) -> Optional[MachineAccount]:
     return db.query(MachineAccount).filter_by(machine_id=machine_id).first()
 
 @router.get("/tier")
-def get_tier(machine_id: str, db: Session = get_db()):
+def get_tier(machine_id: str, db: Session = Depends(get_db)
+):
     print("[tiers_routes.py] Entered: get_tier /api/tier")
     account = get_account(db, machine_id)
     if not account:
@@ -30,7 +31,8 @@ def get_tier(machine_id: str, db: Session = get_db()):
     }
 
 @router.post("/tier/upgrade")
-def upgrade_tier(machine_id: str, new_tier: UserTier, db: Session = get_db()):
+def upgrade_tier(machine_id: str, new_tier: UserTier, db: Session = Depends(get_db)
+):
     print("[tiers_routes.py] Entered: upgrade_tier /api/tier/upgrade")
     account = get_account(db, machine_id)
     if not account:
@@ -44,7 +46,8 @@ def upgrade_tier(machine_id: str, new_tier: UserTier, db: Session = get_db()):
     return {"status": "success", "machine_id": machine_id, "tier": account.tier.value}
 
 @router.post("/tier/ban")
-def ban_user(machine_id: str, db: Session = get_db()):
+def ban_user(machine_id: str, db: Session = Depends(get_db)
+):
     print("[tiers_routes.py] Entered: ban_user /api/tier/ban")
     account = get_account(db, machine_id)
     if not account:
@@ -56,7 +59,8 @@ def ban_user(machine_id: str, db: Session = get_db()):
     return {"status": "banned", "machine_id": machine_id}
 
 @router.post("/tier/unban")
-def unban_user(machine_id: str, db: Session = get_db()):
+def unban_user(machine_id: str, db: Session = Depends(get_db)
+):
     print("[tiers_routes.py] Entered: unban_user /api/tier/unban")
     account = get_account(db, machine_id)
     if not account:
@@ -70,7 +74,7 @@ def unban_user(machine_id: str, db: Session = get_db()):
 @router.get("/tiers/all")
 def list_accounts(
     tier: Optional[UserTier] = Query(None),
-    db: Session = get_db(),
+    db: Session = Depends(get_db),
     limit: int = 100,
     offset: int = 0,
 ):

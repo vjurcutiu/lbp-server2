@@ -8,7 +8,7 @@ print("[main.py] Importing routers...")
 from openai_api.openai_routes import router as openai_router
 from payment.payment_routes import router as payment_router
 from tiers.tiers_routes import router as user_router
-from pinecone.pinecone_routes import router as pinecone_router
+from pinecone_engine.pinecone_routes import router as pinecone_router
 
 from dotenv import load_dotenv
 load_dotenv()

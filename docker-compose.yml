@@ -71,6 +71,8 @@ services:
       - fastapi-db
     environment:
       DATABASE_URL: postgresql://fastapi:fastapi@fastapi-db:5432/fastapi
+    env_file:
+      - ./backend/env
 
   redis:
     image: redis:6

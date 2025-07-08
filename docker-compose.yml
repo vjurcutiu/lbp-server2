@@ -1,33 +1,10 @@
 services:
-  kong-database:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: kong
-      POSTGRES_DB: kong
-      POSTGRES_PASSWORD: kong
-    ports:
-      - 5432:5432
-    volumes:
-      - kong-db-data:/var/lib/postgresql/data
-
-  kong-migrations:
-    image: kong:3.6
-    command: kong migrations bootstrap
-    environment:
-      KONG_DATABASE: postgres
-      KONG_PG_HOST: kong-database
-      KONG_PG_PASSWORD: kong
-      KONG_PASSWORD: kong
-    depends_on:
-      - kong-database
-
   kong:
     restart: always
     image: kong:3.6
     environment:
-      KONG_DATABASE: postgres
-      KONG_PG_HOST: kong-database
-      KONG_PG_PASSWORD: kong
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
@@ -36,9 +13,6 @@ services:
       KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl, 0.0.0.0:80, 0.0.0.0:443 ssl
       KONG_SSL_CERT: /certs/fullchain.pem
       KONG_SSL_CERT_KEY: /certs/privkey.pem
-    depends_on:
-      - kong-database
-      - kong-migrations
     ports:
       - "8000:8000"
       - "8443:8443"
@@ -46,7 +20,7 @@ services:
       - "443:443"
     volumes:
       - ./certs:/certs:ro
-      
+      - ./kong-config:/kong/declarative:ro
 
   fastapi-db:
     image: postgres:13
@@ -56,10 +30,10 @@ services:
       POSTGRES_PASSWORD: fastapi
       POSTGRES_DB: fastapi
     ports:
-      - "5433:5432"  # Exposes on 5433 locally, inside Docker use service name 'fastapi-db'
+      - "5433:5432"
     volumes:
       - fastapi-db-data:/var/lib/postgresql/data
-  
+
   fastapi:
     build:
       context: ./backend
@@ -79,35 +53,5 @@ services:
     ports:
       - "6379:6379"
 
-  konga-db:
-    image: postgres:11
-    environment:
-      POSTGRES_USER: konga
-      POSTGRES_PASSWORD: konga
-      POSTGRES_DB: konga
-    ports:
-      - "5444:5432"
-    volumes:
-      - konga-db-data:/var/lib/postgresql/data
-
-
-  konga:
-    image: pantsel/konga
-    restart: unless-stopped
-    ports:
-      - "1337:1337"
-    environment:
-      NODE_ENV: production
-      DB_ADAPTER: postgres
-      DB_HOST: konga-db
-      DB_PORT: 5432
-      DB_USER: konga
-      DB_PASSWORD: konga
-      DB_DATABASE: konga      
-      AUTO_MIGRATE: "true"
-
-
 volumes:
   fastapi-db-data:
-  konga-db-data:
-  kong-db-data:

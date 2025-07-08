@@ -1,0 +1,9 @@
+_format_version: "3.0"
+services:
+  - name: fastapi
+    url: http://fastapi:8002
+    routes:
+      - name: fastapi-root
+        paths:
+          - /api
+        strip_path: false

@@ -1,5 +1,6 @@
 
-# pinecone_routes.py (FastAPI - uses Pinecone SDK directly!)
+print("[pinecone_routes.py] pinecone_routes.py imported")
+
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
 from tiers.tiers_models import MachineAccount
@@ -10,6 +11,7 @@ import os
 router = APIRouter()
 
 def get_pinecone_index():
+    print("[pinecone_routes.py] get_pinecone_index called")
     api_key = os.environ["PINECONE_API_KEY"]
     environment = os.environ["PINECONE_ENV"]
     index_name = os.environ["PINECONE_INDEX"]
@@ -17,16 +19,20 @@ def get_pinecone_index():
     return client.Index(index_name)
 
 def validate_machine_id(request: Request, db: Session):
+    print("[pinecone_routes.py] validate_machine_id called")
     machine_id = request.headers.get("X-Machine-Id")
     if not machine_id:
+        print("[pinecone_routes.py] Missing machine ID")
         raise HTTPException(status_code=403, detail="Missing machine ID")
     account = db.query(MachineAccount).filter_by(machine_id=machine_id, is_active=True).first()
     if not account:
+        print("[pinecone_routes.py] Invalid or banned machine ID")
         raise HTTPException(status_code=403, detail="Invalid or banned machine ID")
     return account
 
 @router.post("/pinecone/upsert")
 async def upsert_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
+    print("[pinecone_routes.py] Entered: upsert_vectors /api/pinecone/upsert")
     validate_machine_id(request, db)
     index = get_pinecone_index()
     vectors = payload["vectors"]
@@ -39,6 +45,7 @@ async def upsert_vectors(payload: dict, request: Request, db: Session = Depends(
 
 @router.post("/pinecone/query")
 async def query_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
+    print("[pinecone_routes.py] Entered: query_vectors /api/pinecone/query")
     validate_machine_id(request, db)
     index = get_pinecone_index()
     return index.query(
@@ -52,6 +59,7 @@ async def query_vectors(payload: dict, request: Request, db: Session = Depends(g
 
 @router.post("/pinecone/delete")
 async def delete_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
+    print("[pinecone_routes.py] Entered: delete_vectors /api/pinecone/delete")
     validate_machine_id(request, db)
     index = get_pinecone_index()
     return index.delete(
@@ -62,6 +70,7 @@ async def delete_vectors(payload: dict, request: Request, db: Session = Depends(
 
 @router.post("/pinecone/fetch")
 async def fetch_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
+    print("[pinecone_routes.py] Entered: fetch_vectors /api/pinecone/fetch")
     validate_machine_id(request, db)
     index = get_pinecone_index()
     return index.fetch(

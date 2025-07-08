@@ -1,3 +1,6 @@
+
+print("[tiers_routes.py] tiers_routes.py imported")
+
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db  # assumes you have a dependency that provides a DB session
@@ -7,12 +10,15 @@ from typing import Optional
 router = APIRouter()
 
 def get_account(db: Session, machine_id: str) -> Optional[MachineAccount]:
+    print("[tiers_routes.py] get_account called with machine_id:", machine_id)
     return db.query(MachineAccount).filter_by(machine_id=machine_id).first()
 
 @router.get("/tier")
 def get_tier(machine_id: str, db: Session = get_db()):
+    print("[tiers_routes.py] Entered: get_tier /api/tier")
     account = get_account(db, machine_id)
     if not account:
+        print("[tiers_routes.py] Machine ID not found")
         raise HTTPException(status_code=404, detail="Machine ID not found")
     return {
         "machine_id": account.machine_id,
@@ -25,8 +31,10 @@ def get_tier(machine_id: str, db: Session = get_db()):
 
 @router.post("/tier/upgrade")
 def upgrade_tier(machine_id: str, new_tier: UserTier, db: Session = get_db()):
+    print("[tiers_routes.py] Entered: upgrade_tier /api/tier/upgrade")
     account = get_account(db, machine_id)
     if not account:
+        print("[tiers_routes.py] Machine ID not found (upgrade)")
         raise HTTPException(status_code=404, detail="Machine ID not found")
     account.tier = new_tier
     if new_tier == UserTier.pro:
@@ -37,8 +45,10 @@ def upgrade_tier(machine_id: str, new_tier: UserTier, db: Session = get_db()):
 
 @router.post("/tier/ban")
 def ban_user(machine_id: str, db: Session = get_db()):
+    print("[tiers_routes.py] Entered: ban_user /api/tier/ban")
     account = get_account(db, machine_id)
     if not account:
+        print("[tiers_routes.py] Machine ID not found (ban)")
         raise HTTPException(status_code=404, detail="Machine ID not found")
     account.tier = UserTier.banned
     account.is_active = False
@@ -47,8 +57,10 @@ def ban_user(machine_id: str, db: Session = get_db()):
 
 @router.post("/tier/unban")
 def unban_user(machine_id: str, db: Session = get_db()):
+    print("[tiers_routes.py] Entered: unban_user /api/tier/unban")
     account = get_account(db, machine_id)
     if not account:
+        print("[tiers_routes.py] Machine ID not found (unban)")
         raise HTTPException(status_code=404, detail="Machine ID not found")
     account.tier = UserTier.demo
     account.is_active = True
@@ -62,6 +74,7 @@ def list_accounts(
     limit: int = 100,
     offset: int = 0,
 ):
+    print("[tiers_routes.py] Entered: list_accounts /api/tiers/all")
     query = db.query(MachineAccount)
     if tier:
         query = query.filter_by(tier=tier)
@@ -80,10 +93,11 @@ def list_accounts(
 
 # Utility for integration with payment_routes
 def set_user_pro(db: Session, machine_id: str, email: Optional[str] = None):
+    print("[tiers_routes.py] set_user_pro called")
     account = get_account(db, machine_id)
     from datetime import datetime
     if not account:
-        # Auto-create if doesn't exist
+        print("[tiers_routes.py] Account auto-created in set_user_pro")
         account = MachineAccount(
             machine_id=machine_id,
             tier=UserTier.pro,

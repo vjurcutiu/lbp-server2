@@ -1,9 +1,12 @@
 
 print("[openai_routes.py] openai_routes.py imported")
 
-from fastapi import APIRouter, Request, Header
+from fastapi import APIRouter, Request, Header, Depends
 from fastapi.responses import JSONResponse
 from openai import OpenAI
+
+from backend.rate_limiter.rate_limiter_dependencies import quota_check
+
 
 router = APIRouter()
 openai_client = OpenAI()
@@ -12,7 +15,7 @@ def format_openai_error(e: Exception):
     print("[openai_routes.py] format_openai_error: {}".format(str(e)))
     return JSONResponse(content={"error": str(e)}, status_code=500)
 
-@router.post("/openai_chat")
+@router.post("/openai_chat", dependencies=[Depends(quota_check("messages"))])
 async def openai_chat(request: Request, x_machine_id: str = Header(None)):
     print("[openai_routes.py] Entered: openai_chat /api/openai_chat")
     data = await request.json()

@@ -8,6 +8,9 @@ from database import get_db
 from pinecone import Pinecone
 import os
 
+from backend.rate_limiter.rate_limiter_dependencies import quota_check
+
+
 router = APIRouter()
 
 def get_pinecone_index():
@@ -30,7 +33,7 @@ def validate_machine_id(request: Request, db: Session):
         raise HTTPException(status_code=403, detail="Invalid or banned machine ID")
     return account
 
-@router.post("/pinecone/upsert")
+@router.post("/pinecone/upsert", dependencies=[Depends(quota_check("files"))])
 async def upsert_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
     print("[pinecone_routes.py] Entered: upsert_vectors /api/pinecone/upsert")
     validate_machine_id(request, db)

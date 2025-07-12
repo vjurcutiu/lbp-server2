@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Header, HTTPException
+from fastapi import APIRouter, Request, Header, HTTPException, Depends
 from fastapi.responses import JSONResponse
 import stripe
 import os
@@ -6,9 +6,9 @@ import smtplib
 from email.message import EmailMessage
 from tiers.tiers_routes import set_user_pro
 from sqlalchemy.orm import Session
-from backend.rate_limiter.rate_limiter_models import MachineAccount, UserTier
-from backend.rate_limiter.rate_limiter_services import reset_all_quotas
-
+from rate_limiter.rate_limiter_models import MachineAccount, UserTier
+from rate_limiter.rate_limiter_services import reset_all_quotas
+from database import get_db
 
 
 
@@ -78,26 +78,6 @@ async def create_checkout_session(request: Request):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
 
-@router.post("/stripe/webhook")
-async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
-    payload = await request.body()
-    try:
-        event = stripe.Webhook.construct_event(payload, stripe_signature, webhook_secret)
-    except ValueError:
-        return "Invalid payload", 400
-    except stripe.error.SignatureVerificationError:
-        return "Invalid signature", 400
-
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        uuid = session["metadata"]["uuid"]
-        email = session.get("customer_email")
-        db = get_db()
-        set_user_pro(db, uuid, email)
-        if email:
-            send_license_email(email, uuid)
-    return "ok", 200
-
 @router.get("/license-status")
 def license_status(uuid: str):
     # Look up uuid in your database
@@ -106,21 +86,34 @@ def license_status(uuid: str):
     return {"status": "inactive"}
 
 @router.post("/webhook/stripe")
-async def stripe_webhook(request: Request, db: Session = Depends()):
-    # For demo, pretend the event is a success and contains a machine_id in query params
-    params = dict(request.query_params)
-    machine_id = params.get("machine_id")
-    event_type = params.get("event_type", "invoice.payment_succeeded")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    data = await request.json()
+    print(f"[webhook/stripe] Body data: {data}")
+    
+    machine_id = data.get("machine_id")
+    event_type = data.get("event_type", "invoice.payment_succeeded")
+    print(f"[webhook/stripe] machine_id: {machine_id}, event_type: {event_type}")
+
+    # Show headers and raw body for extra debugging (if needed)
+    print(f"[webhook/stripe] Headers: {dict(request.headers)}")
+    body = await request.body()
+    print(f"[webhook/stripe] Raw body: {body}")
 
     account = db.query(MachineAccount).filter_by(machine_id=machine_id).first()
+    print(f"[webhook/stripe] DB account: {account}")
+
     if not account:
+        print("[webhook/stripe] No account found, returning 404")
         raise HTTPException(404, "Account not found")
     if event_type == "invoice.payment_succeeded":
+        print("[webhook/stripe] Setting account tier to pro")
         account.tier = UserTier.pro
         reset_all_quotas(account, db)
         db.commit()
     elif event_type == "customer.subscription.deleted":
+        print("[webhook/stripe] Setting account tier to demo")
         account.tier = UserTier.demo
         reset_all_quotas(account, db)
         db.commit()
+    print("[webhook/stripe] Done, returning ok")
     return {"ok": True}

@@ -8,7 +8,7 @@ from database import get_db
 from pinecone import Pinecone
 import os
 
-from backend.rate_limiter.rate_limiter_dependencies import quota_check
+from rate_limiter.rate_limiter_dependencies import quota_check
 
 
 router = APIRouter()

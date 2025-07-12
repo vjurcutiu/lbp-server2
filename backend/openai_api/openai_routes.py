@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request, Header, Depends
 from fastapi.responses import JSONResponse
 from openai import OpenAI
 
-from backend.rate_limiter.rate_limiter_dependencies import quota_check
+from rate_limiter.rate_limiter_dependencies import quota_check
 
 
 router = APIRouter()

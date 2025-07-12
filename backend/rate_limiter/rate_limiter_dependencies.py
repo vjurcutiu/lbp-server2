@@ -1,6 +1,6 @@
 from fastapi import Request, HTTPException, Depends
 from sqlalchemy.orm import Session
-from backend.rate_limiter.rate_limiter_services import check_and_increment_usage
+from rate_limiter.rate_limiter_services import check_and_increment_usage
 
 def quota_check(feature: str):
     def dependency(request: Request, db: Session = Depends()):

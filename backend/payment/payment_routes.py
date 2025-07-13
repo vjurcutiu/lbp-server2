@@ -49,10 +49,6 @@ webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 @router.post("/create-checkout-session")
 async def create_checkout_session(request: Request):
-    data = await request.json()
-    uuid = data.get("uuid")
-    if not uuid:
-        return JSONResponse({"error": "Missing uuid"}, status_code=400)
 
     try:
         # Optionally, add metadata for later lookup (license activation, etc.)
@@ -70,7 +66,6 @@ async def create_checkout_session(request: Request):
                 'quantity': 1,
             }],
             mode='subscription',
-            metadata={'uuid': uuid},
             success_url='https://yourapp.com/payment-success',
             cancel_url='https://yourapp.com/payment-cancel',
         )

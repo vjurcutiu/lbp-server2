@@ -3,7 +3,7 @@ print("[pinecone_routes.py] pinecone_routes.py imported")
 
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
-from tiers.tiers_models import MachineAccount
+from rate_limiter.rate_limiter_models import MachineAccount
 from database import get_db
 from pinecone import Pinecone
 import os

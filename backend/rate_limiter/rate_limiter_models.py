@@ -2,9 +2,8 @@ from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, func, F
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import enum
+from database import Base
 
-Base = declarative_base()
-engine = create_engine("sqlite:///./app.db", connect_args={"check_same_thread": False})
 
 class UserTier(enum.Enum):
     demo = "demo"

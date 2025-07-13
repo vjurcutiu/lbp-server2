@@ -4,7 +4,7 @@ print("[tiers_routes.py] tiers_routes.py imported")
 from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
 from database import get_db  # assumes you have a dependency that provides a DB session
-from .tiers_models import MachineAccount, UserTier
+from rate_limiter.rate_limiter_models import MachineAccount, UserTier
 from typing import Optional
 
 router = APIRouter()

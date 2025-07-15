@@ -36,7 +36,8 @@ services:
 
   fastapi:
     build:
-      context: ./backend
+      context: .                  
+      dockerfile: backend/Dockerfile
     command: uvicorn main:app --host 0.0.0.0 --port 8002 --reload
     ports:
       - "8002:8002"
@@ -47,8 +48,6 @@ services:
       DATABASE_URL: postgresql://fastapi:fastapi@fastapi-db:5432/fastapi
     env_file:
       - ./backend/.env
-    volumes:
-      - ./backend:/app
 
   redis:
     image: redis:6

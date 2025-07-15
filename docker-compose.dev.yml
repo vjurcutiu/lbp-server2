@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  fastapi-db:
+    image: postgres:13
+    restart: always
+    environment:
+      POSTGRES_USER: fastapi
+      POSTGRES_PASSWORD: fastapi
+      POSTGRES_DB: fastapi
+    ports:
+      - "5433:5432"
+    volumes:
+      - fastapi-db-data:/var/lib/postgresql/data
+
+  fastapi:
+    build:
+      context: .                  
+      dockerfile: backend/Dockerfile
+    command: uvicorn main:app --host 0.0.0.0 --port 8002 --reload
+    ports:
+      - "8002:8002"
+    restart: always
+    depends_on:
+      - fastapi-db
+    environment:
+      DATABASE_URL: postgresql://fastapi:fastapi@fastapi-db:5432/fastapi
+    env_file:
+      - ./backend/.env
+    # IMPORTANT: mount your backend code for live reload!
+    volumes:
+      - ./backend:/app
+      - ./latest_version.txt:/app/latest_version.txt
+
+
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+
+volumes:
+  fastapi-db-data:

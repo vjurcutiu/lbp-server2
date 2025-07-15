@@ -10,7 +10,14 @@ from rate_limiter.rate_limiter_models import MachineAccount, UserTier
 from rate_limiter.rate_limiter_services import reset_all_quotas
 from database import get_db
 
+PROD = os.getenv('ENV', 'dev') == 'prod'
 
+if PROD:
+    SUCCESS_URL = "https://lexbot.pro/payment-success"
+    CANCEL_URL = "https://lexbot.pro/payment-cancel"
+else:
+    SUCCESS_URL = "http://localhost:5173/payment-success"
+    CANCEL_URL = "http://localhost:5173/payment-cancel"
 
 def send_license_email(email: str, uuid: str):
     # Example email text
@@ -49,9 +56,7 @@ webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 @router.post("/create-checkout-session")
 async def create_checkout_session(request: Request):
-
     try:
-        # Optionally, add metadata for later lookup (license activation, etc.)
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
@@ -66,8 +71,20 @@ async def create_checkout_session(request: Request):
                 'quantity': 1,
             }],
             mode='subscription',
-            success_url='https://yourapp.com/payment-success',
-            cancel_url='https://yourapp.com/payment-cancel',
+            success_url=SUCCESS_URL,
+            cancel_url=CANCEL_URL,
+            billing_address_collection='required',   # <-- Collect billing address
+            custom_fields=[                         # <-- Add custom CIF field
+                {
+                    'key': 'cif',
+                    'label': {
+                        'type': 'custom',
+                        'custom': 'CIF/CUI'
+                    },
+                    'type': 'text',
+                    'optional': False, 
+                }
+            ],
         )
         return {"url": session.url}
     except Exception as e:

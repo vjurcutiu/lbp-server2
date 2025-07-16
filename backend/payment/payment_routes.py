@@ -56,15 +56,42 @@ webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 @router.post("/create-checkout-session")
 async def create_checkout_session(request: Request):
+    machine_id = request.headers.get("X-Machine-ID")
+    print(f"[checkout-session] X-Machine-ID header: {machine_id}")
+
     try:
+        print("[checkout-session] Creating Stripe Checkout Session with the following params:")
+        print({
+            "payment_method_types": ['card'],
+            "line_items": [{
+                'price_data': {
+                    'currency': 'eur',
+                    'product_data': {'name': 'LexBot PRO Subscription'},
+                    'unit_amount': 1900,
+                    'recurring': {'interval': 'month'}
+                },
+                'quantity': 1,
+            }],
+            "mode": 'subscription',
+            "success_url": SUCCESS_URL,
+            "cancel_url": CANCEL_URL,
+            "billing_address_collection": 'required',
+            "custom_fields": [{
+                'key': 'cif',
+                'label': {'type': 'custom', 'custom': 'CIF/CUI'},
+                'type': 'text',
+                'optional': False, 
+            }],
+            "metadata": {"machine_id": machine_id},
+            "subscription_data": {"metadata": {"machine_id": machine_id}},
+        })
+
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
                     'currency': 'eur',
-                    'product_data': {
-                        'name': 'LexBot PRO Subscription',
-                    },
+                    'product_data': {'name': 'LexBot PRO Subscription'},
                     'unit_amount': 1900,
                     'recurring': {'interval': 'month'}
                 },
@@ -73,59 +100,141 @@ async def create_checkout_session(request: Request):
             mode='subscription',
             success_url=SUCCESS_URL,
             cancel_url=CANCEL_URL,
-            billing_address_collection='required',   # <-- Collect billing address
-            custom_fields=[                         # <-- Add custom CIF field
-                {
-                    'key': 'cif',
-                    'label': {
-                        'type': 'custom',
-                        'custom': 'CIF/CUI'
-                    },
-                    'type': 'text',
-                    'optional': False, 
-                }
-            ],
+            billing_address_collection='required',
+            custom_fields=[{
+                'key': 'cif',
+                'label': {'type': 'custom', 'custom': 'CIF/CUI'},
+                'type': 'text',
+                'optional': False, 
+            }],
+            metadata={"machine_id": machine_id},
+            subscription_data={
+                "metadata": {"machine_id": machine_id}
+            },
         )
+
+        print(f"[checkout-session] Created Stripe session id: {session.id}")
+        print(f"[checkout-session] Stripe session metadata: {session.metadata}")
+        print(f"[checkout-session] Stripe session subscription: {session.subscription}")
+
+        # Fetch the created subscription immediately and print metadata
+        if session.subscription:
+            sub = stripe.Subscription.retrieve(session.subscription)
+            print(f"[checkout-session] Subscription id: {sub.id}")
+            print(f"[checkout-session] Subscription metadata: {sub.metadata}")
+
         return {"url": session.url}
     except Exception as e:
+        print(f"[checkout-session] Exception occurred: {e}")
         return JSONResponse({"error": str(e)}, status_code=400)
 
-@router.get("/license-status")
-def license_status(uuid: str):
-    # Look up uuid in your database
-    if is_licensed(uuid):
-        return {"status": "active"}
-    return {"status": "inactive"}
 
 @router.post("/webhook/stripe")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
-    data = await request.json()
-    print(f"[webhook/stripe] Body data: {data}")
-    
-    machine_id = data.get("machine_id")
-    event_type = data.get("event_type", "invoice.payment_succeeded")
-    print(f"[webhook/stripe] machine_id: {machine_id}, event_type: {event_type}")
-
-    # Show headers and raw body for extra debugging (if needed)
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    print(f"[webhook/stripe] Received webhook call.")
     print(f"[webhook/stripe] Headers: {dict(request.headers)}")
-    body = await request.body()
-    print(f"[webhook/stripe] Raw body: {body}")
+    print(f"[webhook/stripe] Raw body: {payload}")
 
-    account = db.query(MachineAccount).filter_by(machine_id=machine_id).first()
-    print(f"[webhook/stripe] DB account: {account}")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except ValueError:
+        print("[webhook/stripe] Invalid payload error!")
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError:
+        print("[webhook/stripe] Signature verification error!")
+        raise HTTPException(status_code=400, detail="Invalid signature")
 
-    if not account:
-        print("[webhook/stripe] No account found, returning 404")
-        raise HTTPException(404, "Account not found")
+    event_type = event['type']
+    data_object = event['data']['object']
+    print(f"[webhook/stripe] Event type: {event_type}")
+    print(f"[webhook/stripe] Data object: {data_object}")
+
     if event_type == "invoice.payment_succeeded":
-        print("[webhook/stripe] Setting account tier to pro")
+        # Try invoice metadata
+        machine_id = data_object.get('metadata', {}).get('machine_id')
+        if not machine_id:
+            # 1. Try all line items
+            lines = data_object.get('lines', {}).get('data', [])
+            for item in lines:
+                machine_id = item.get('metadata', {}).get('machine_id')
+                if machine_id:
+                    print(f"[webhook/stripe] machine_id found in line_item: {machine_id}")
+                    break
+        if not machine_id:
+            # 2. Try parent.subscription_details.metadata
+            parent = data_object.get('parent', {})
+            sub_details = parent.get('subscription_details', {}) if parent else {}
+            machine_id = sub_details.get('metadata', {}).get('machine_id')
+            if machine_id:
+                print(f"[webhook/stripe] machine_id found in parent.subscription_details: {machine_id}")
+        if not machine_id:
+            # 3. (if available) Fallback to classic way: fetch subscription if there's a subscription id
+            subscription_id = data_object.get('subscription')
+            if subscription_id:
+                subscription = stripe.Subscription.retrieve(subscription_id)
+                machine_id = subscription.get('metadata', {}).get('machine_id')
+                if machine_id:
+                    print(f"[webhook/stripe] machine_id found from subscription fetch: {machine_id}")
+        if not machine_id:
+            print(f"[webhook/stripe] invoice.payment_succeeded still missing machine_id. Event ID: {event['id']}")
+            return {"ok": True}
+
+        account = db.query(MachineAccount).filter_by(machine_id=machine_id).first()
+        print(f"[webhook/stripe] Queried MachineAccount: {account}")
+        if not account:
+            print(f"[webhook/stripe] No account found for machine_id {machine_id}")
+            return {"ok": True}
+        print(f"[webhook/stripe] Account tier before update: {account.tier}")
         account.tier = UserTier.pro
         reset_all_quotas(account, db)
         db.commit()
+        db.refresh(account)
+        print(f"[webhook/stripe] Account tier after update: {account.tier}")
+        return {"ok": True}
+
     elif event_type == "customer.subscription.deleted":
-        print("[webhook/stripe] Setting account tier to demo")
+        machine_id = data_object.get('metadata', {}).get('machine_id')
+        if not machine_id:
+            # 1. Try all line items
+            lines = data_object.get('lines', {}).get('data', [])
+            for item in lines:
+                machine_id = item.get('metadata', {}).get('machine_id')
+                if machine_id:
+                    print(f"[webhook/stripe] machine_id found in line_item: {machine_id}")
+                    break
+        if not machine_id:
+            # 2. Try parent.subscription_details.metadata
+            parent = data_object.get('parent', {})
+            sub_details = parent.get('subscription_details', {}) if parent else {}
+            machine_id = sub_details.get('metadata', {}).get('machine_id')
+            if machine_id:
+                print(f"[webhook/stripe] machine_id found in parent.subscription_details: {machine_id}")
+        if not machine_id:
+            # 3. (if available) Fallback to classic way: fetch subscription if there's a subscription id
+            subscription_id = data_object.get('subscription')
+            if subscription_id:
+                subscription = stripe.Subscription.retrieve(subscription_id)
+                machine_id = subscription.get('metadata', {}).get('machine_id')
+                if machine_id:
+                    print(f"[webhook/stripe] machine_id found from subscription fetch: {machine_id}")
+        if not machine_id:
+            print(f"[webhook/stripe] invoice.payment_succeeded still missing machine_id. Event ID: {event['id']}")
+            return {"ok": True}
+        account = db.query(MachineAccount).filter_by(machine_id=machine_id).first()
+        print(f"[webhook/stripe] Queried MachineAccount: {account}")
+        if not account:
+            print(f"[webhook/stripe] No account found for machine_id {machine_id}")
+            return {"ok": True}
+        print(f"[webhook/stripe] Account tier before update: {account.tier}")
         account.tier = UserTier.demo
         reset_all_quotas(account, db)
         db.commit()
-    print("[webhook/stripe] Done, returning ok")
+        db.refresh(account)
+        print(f"[webhook/stripe] Account tier after update: {account.tier}")
+        return {"ok": True}
+
+    print(f"[webhook/stripe] Ignoring event type: {event_type}")
     return {"ok": True}
+

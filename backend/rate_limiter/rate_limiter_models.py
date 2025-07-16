@@ -20,7 +20,9 @@ class MachineAccount(Base):
     upgraded_at = Column(DateTime)
     is_active = Column(Boolean, default=True)
     email = Column(String, nullable=True)
-    usage = relationship("UsageStats", back_populates="account")
+    usage = relationship("UsageStats", back_populates="account")    
+    subscription = relationship("UserSubscription", back_populates="machine_account", uselist=False)
+
 
 class UsageStats(Base):
     __tablename__ = "usage_stats"

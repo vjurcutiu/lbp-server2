@@ -9,8 +9,9 @@ class MachineGatewayMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.db_session_factory = db_session_factory
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next):        
         machine_id = request.headers.get('X-Machine-ID')
+        print("INCOMING HEADERS:", request.headers)
         if not machine_id:
             return Response("Missing MachineID", status_code=400)
         db: Session = self.db_session_factory()

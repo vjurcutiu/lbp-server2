@@ -56,6 +56,7 @@ const Home = () => {
       style={{
         background: "linear-gradient(135deg, #c9d0dc 0%, #646f7c 100%)",
         boxShadow: "inset 0 0 140px #e5e7eb, inset 0 0 240px #374151",
+        height: "100%"
       }}
     >
       <div className="flex flex-col items-center" style={{ perspective: 1200 }}>

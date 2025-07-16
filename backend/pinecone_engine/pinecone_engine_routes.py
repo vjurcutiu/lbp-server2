@@ -1,4 +1,3 @@
-
 print("[pinecone_routes.py] pinecone_routes.py imported")
 
 from fastapi import APIRouter, Request, HTTPException, Depends
@@ -7,9 +6,9 @@ from rate_limiter.rate_limiter_models import MachineAccount
 from database import get_db
 from pinecone import Pinecone
 import os
+import json
 
 from rate_limiter.rate_limiter_dependencies import quota_check
-
 
 router = APIRouter()
 
@@ -18,7 +17,8 @@ def get_pinecone_index():
     api_key = os.environ["PINECONE_API_KEY"]
     environment = os.environ["PINECONE_ENV"]
     index_name = os.environ["PINECONE_INDEX"]
-    client = Pinecone(api_key=api_key, environment=environment)
+    print(f"[pinecone_routes.py] Pinecone ENV: {environment}, INDEX: {index_name}")
+    client = Pinecone(api_key=api_key)
     return client.Index(index_name)
 
 def validate_machine_id(request: Request, db: Session):
@@ -33,6 +33,19 @@ def validate_machine_id(request: Request, db: Session):
         raise HTTPException(status_code=403, detail="Invalid or banned machine ID")
     return account
 
+def pinecone_result_to_dict(result):
+    """Converts Pinecone SDK result to a serializable dict."""
+    # Try .to_dict() (new SDK), then .to_json(), else fallback to asdict (for old SDKs)
+    if hasattr(result, "to_dict"):
+        return result.to_dict()
+    elif hasattr(result, "to_json"):
+        return json.loads(result.to_json())
+    elif isinstance(result, dict):
+        return result
+    else:
+        # Try vars() for objects
+        return vars(result)
+
 @router.post("/pinecone/upsert", dependencies=[Depends(quota_check("files"))])
 async def upsert_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
     print("[pinecone_routes.py] Entered: upsert_vectors /api/pinecone/upsert")
@@ -41,17 +54,20 @@ async def upsert_vectors(payload: dict, request: Request, db: Session = Depends(
     vectors = payload["vectors"]
     namespace = payload.get("namespace")
     batch_size = payload.get("batch_size", 100)
+    upserted = 0
     for i in range(0, len(vectors), batch_size):
         batch = vectors[i:i+batch_size]
-        index.upsert(batch, namespace)
-    return {"status": "ok", "upserted": len(vectors)}
+        resp = index.upsert(batch, namespace)
+        print(f"[pinecone_routes.py] Upserted batch of {len(batch)} vectors")
+        upserted += len(batch)
+    return {"status": "ok", "upserted": upserted}
 
 @router.post("/pinecone/query")
 async def query_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
     print("[pinecone_routes.py] Entered: query_vectors /api/pinecone/query")
     validate_machine_id(request, db)
     index = get_pinecone_index()
-    return index.query(
+    resp = index.query(
         vector=payload["vector"],
         top_k=payload.get("top_k", 10),
         namespace=payload.get("namespace"),
@@ -59,24 +75,30 @@ async def query_vectors(payload: dict, request: Request, db: Session = Depends(g
         include_values=payload.get("include_values", False),
         include_metadata=payload.get("include_metadata", True),
     )
+    print("[pinecone_routes.py] Query completed, serializing result")
+    return pinecone_result_to_dict(resp)
 
 @router.post("/pinecone/delete")
 async def delete_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
     print("[pinecone_routes.py] Entered: delete_vectors /api/pinecone/delete")
     validate_machine_id(request, db)
     index = get_pinecone_index()
-    return index.delete(
+    resp = index.delete(
         ids=payload.get("ids"),
         filter=payload.get("filter"),
         namespace=payload.get("namespace")
     )
+    print("[pinecone_routes.py] Delete completed, serializing result")
+    return pinecone_result_to_dict(resp)
 
 @router.post("/pinecone/fetch")
 async def fetch_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
     print("[pinecone_routes.py] Entered: fetch_vectors /api/pinecone/fetch")
     validate_machine_id(request, db)
     index = get_pinecone_index()
-    return index.fetch(
+    resp = index.fetch(
         ids=payload["ids"],
         namespace=payload.get("namespace")
     )
+    print("[pinecone_routes.py] Fetch completed, serializing result")
+    return pinecone_result_to_dict(resp)

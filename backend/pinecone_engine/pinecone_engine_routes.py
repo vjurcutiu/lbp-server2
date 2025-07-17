@@ -52,7 +52,7 @@ async def upsert_vectors(payload: dict, request: Request, db: Session = Depends(
     validate_machine_id(request, db)
     index = get_pinecone_index()
     vectors = payload["vectors"]
-    namespace = payload.get("namespace")
+    namespace = request.headers.get("X-Machine-Id")
     batch_size = payload.get("batch_size", 100)
     upserted = 0
     for i in range(0, len(vectors), batch_size):
@@ -70,7 +70,7 @@ async def query_vectors(payload: dict, request: Request, db: Session = Depends(g
     resp = index.query(
         vector=payload["vector"],
         top_k=payload.get("top_k", 10),
-        namespace=payload.get("namespace"),
+        namespace=request.headers.get("X-Machine-Id"),
         filter=payload.get("filter"),
         include_values=payload.get("include_values", False),
         include_metadata=payload.get("include_metadata", True),
@@ -86,7 +86,7 @@ async def delete_vectors(payload: dict, request: Request, db: Session = Depends(
     resp = index.delete(
         ids=payload.get("ids"),
         filter=payload.get("filter"),
-        namespace=payload.get("namespace")
+        namespace=request.headers.get("X-Machine-Id")
     )
     print("[pinecone_routes.py] Delete completed, serializing result")
     return pinecone_result_to_dict(resp)
@@ -98,7 +98,7 @@ async def fetch_vectors(payload: dict, request: Request, db: Session = Depends(g
     index = get_pinecone_index()
     resp = index.fetch(
         ids=payload["ids"],
-        namespace=payload.get("namespace")
+        namespace=request.headers.get("X-Machine-Id")
     )
     print("[pinecone_routes.py] Fetch completed, serializing result")
     return pinecone_result_to_dict(resp)

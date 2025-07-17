@@ -42,12 +42,12 @@ def check_and_increment_usage(db, machine_id: str, tier: str, feature: str):
         db.add(usage)
         db.commit()
         db.refresh(usage)
-    if usage.reset_at < datetime.utcnow() - timedelta(days=1):
-        usage.used = 0
-        usage.reset_at = datetime.utcnow()
-        from rate_limiter.rate_limiter_config import TIER_LIMITS
-        usage.limit = TIER_LIMITS[tier][feature]
-        db.commit()
+    #if usage.reset_at < datetime.utcnow() - timedelta(days=1):
+    #    usage.used = 0
+    #    usage.reset_at = datetime.utcnow()
+    #    from rate_limiter.rate_limiter_config import TIER_LIMITS
+    #    usage.limit = TIER_LIMITS[tier][feature]
+    #    db.commit()
     if usage.used >= usage.limit:
         return False
     usage.used += 1

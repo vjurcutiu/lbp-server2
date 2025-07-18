@@ -1,58 +1,16 @@
+from pinecone import Pinecone
 import os
-from features.demo.requester import post, get
 
-class PineconeService:
-    def __init__(self):
-        self.fastapi_base_url = os.getenv("FASTAPI_BASE_URL", "http://kong:8000/api")
+def delete_pinecone_namespace(machine_id):
+    client = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+    index = client.Index(os.getenv("PINECONE_INDEX"))
+    print(f"[delete_pinecone_namespace] Deleting namespace: {machine_id}")
 
-    def upsert(self, vectors, namespace=None, batch_size=100):
-        url = f"{self.fastapi_base_url}/pinecone_upsert"
-        data = {
-            "vectors": vectors,
-            "namespace": namespace,
-            "batch_size": batch_size
-        }
-        resp = post(url, json=data)
-        return resp.json().get('result')
-
-    def query(self, vector, top_k=10, namespace=None, filter=None, include_values=False, include_metadata=True):
-        url = f"{self.fastapi_base_url}/pinecone_query"
-        data = {
-            "vector": vector,
-            "top_k": top_k,
-            "namespace": namespace,
-            "filter": filter,
-            "include_values": include_values,
-            "include_metadata": include_metadata,
-        }
-        resp = post(url, json=data)
-        return resp.json().get('result')
-
-    def delete(self, ids=None, filter=None, namespace=None):
-        url = f"{self.fastapi_base_url}/pinecone_delete"
-        data = {
-            "ids": ids,
-            "filter": filter,
-            "namespace": namespace,
-        }
-        resp = post(url, json=data)
-        return resp.json().get('result')
-
-    def fetch(self, ids, namespace=None):
-        url = f"{self.fastapi_base_url}/pinecone_fetch"
-        data = {
-            "ids": ids,
-            "namespace": namespace
-        }
-        resp = post(url, json=data)
-        return resp.json().get('result')
-
-    def info(self):
-        url = f"{self.fastapi_base_url}/pinecone_info"
-        resp = get(url)
-        return resp.json().get('result')
-
-    def describe_index(self):
-        url = f"{self.fastapi_base_url}/pinecone_describe_index"
-        resp = get(url)
-        return resp.json().get('result')
+    # Use the proper delete method
+    try:
+        response = index.delete_namespace(namespace=machine_id)
+        print(f"[delete_pinecone_namespace] delete_namespace response: {response}")
+        return response
+    except Exception as e:
+        print(f"[delete_pinecone_namespace] delete_namespace error: {e}")
+        raise

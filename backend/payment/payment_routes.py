@@ -7,6 +7,7 @@ from rate_limiter.rate_limiter_models import MachineAccount, UserTier
 from rate_limiter.rate_limiter_services import reset_all_quotas
 from database import get_db
 import json
+from pinecone_engine.pinecone_engine_service import delete_pinecone_namespace
 
 from payment.payment_services import (
     get_subscription_status,
@@ -89,10 +90,19 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     print(f"[webhook/stripe] Event type: {event_type}")
     print(f"[webhook/stripe] Data: {json.dumps(data_object, indent=2)}")
     
-    # Update subscription from subscription events
+    # --- Main logic ---
     if event_type.startswith("customer.subscription."):
         update_subscription_from_stripe(event, db)
-    # Update from invoice on payment succeeded (and fetch subscription from Stripe)
+
+        # If it's the deleted event, delete the Pinecone namespace
+        if event_type == "customer.subscription.deleted":
+            machine_id = data_object.get('metadata', {}).get('machine_id')
+            print(f"[webhook/stripe] Deleting Pinecone namespace for machine_id: {machine_id}")
+            if machine_id:
+                try:
+                    delete_pinecone_namespace(machine_id)
+                except Exception as e:
+                    print(f"[webhook/stripe] Error deleting Pinecone namespace: {e}")
     elif event_type == "invoice.payment_succeeded":
         update_subscription_from_invoice(event, db)
     # Optional: handle other invoice.* events if needed

@@ -54,3 +54,8 @@ app.mount("/api", api_app)
 # (No need to include routers on the main app anymore!)
 
 print("[main.py] All routers registered on /api (via sub-app)")
+
+import logging
+logger = logging.getLogger("uvicorn.error")
+for route in api_app.routes:
+    logger.info(f"[ROUTE] {route.path} METHODS: {route.methods}")

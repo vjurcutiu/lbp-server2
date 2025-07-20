@@ -17,6 +17,10 @@ from payment.payment_services import (
     reactivate_subscription,
 )
 
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
 PROD = os.getenv('ENV', 'dev') == 'prod'
 
 if PROD:

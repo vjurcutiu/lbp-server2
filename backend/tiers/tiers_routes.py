@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from database import get_db  # assumes you have a dependency that provides a DB session
 from rate_limiter.rate_limiter_models import MachineAccount, UserTier
 from typing import Optional
+from rate_limiter.rate_limiter_services import reset_all_quotas
+
 
 router = APIRouter()
 

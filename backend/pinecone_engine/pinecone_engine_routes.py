@@ -81,13 +81,38 @@ async def query_vectors(payload: dict, request: Request, db: Session = Depends(g
 @router.post("/pinecone/delete")
 async def delete_vectors(payload: dict, request: Request, db: Session = Depends(get_db)):
     print("[pinecone_routes.py] Entered: delete_vectors /api/pinecone/delete")
-    validate_machine_id(request, db)
+    
+    # Header check
+    print("[pinecone_routes.py] Headers:", dict(request.headers))
+
+    # Validate machine
+    account = validate_machine_id(request, db)
+    print("[pinecone_routes.py] Machine account validated:", account.machine_id)
+
+    # Payload inspection
+    ids = payload.get("ids")
+    delete_filter = payload.get("filter")
+    namespace = request.headers.get("X-Machine-Id")
+
+    print("[pinecone_routes.py] Payload received for deletion:")
+    print(" - ids:", ids)
+    print(" - filter:", delete_filter)
+    print(" - namespace:", namespace)
+
+    # Pinecone call
     index = get_pinecone_index()
-    resp = index.delete(
-        ids=payload.get("ids"),
-        filter=payload.get("filter"),
-        namespace=request.headers.get("X-Machine-Id")
-    )
+    try:
+        resp = index.delete(
+            ids=ids,
+            filter=delete_filter,
+            namespace=namespace,
+        )
+        print("[pinecone_routes.py] Delete request sent to Pinecone.")
+        print("[pinecone_routes.py] Pinecone response:", resp)
+    except Exception as e:
+        print("[pinecone_routes.py] ERROR during deletion:", str(e))
+        raise
+
     print("[pinecone_routes.py] Delete completed, serializing result")
     return pinecone_result_to_dict(resp)
 

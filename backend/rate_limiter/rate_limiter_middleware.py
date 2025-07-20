@@ -12,18 +12,36 @@ class MachineGatewayMiddleware(BaseHTTPMiddleware):
         self.db_session_factory = db_session_factory
 
     async def dispatch(self, request: Request, call_next):
+        print("=== [Middleware] Incoming Request ===")
+        print("Path:", request.url.path)
+        print("Headers:")
+        for k, v in request.headers.items():
+            print(f"  {k}: {v}")
+
         if request.url.path in ALLOWED_PATHS:
-            return await call_next(request)        
-        
-        machine_id = request.headers.get('X-Machine-ID')
-        print("INCOMING HEADERS:", request.headers)
+            print("[Middleware] Path is allowed without Machine ID")
+            return await call_next(request)
+
+        machine_id = request.headers.get('X-Machine-Id') or request.headers.get('X-Machine-ID')
+
         if not machine_id:
+            print("[Middleware] ❌ Missing X-Machine-Id header")
             return Response("Missing MachineID", status_code=400)
+
+        print("[Middleware] ✅ Found machine ID:", machine_id)
+
         db: Session = self.db_session_factory()
-        account = get_or_create_machine_account(db, machine_id)
-        if account.tier == UserTier.banned:
+        try:
+            from rate_limiter.rate_limiter_services import get_or_create_machine_account
+            account = get_or_create_machine_account(db, machine_id)
+
+            if account.tier == UserTier.banned:
+                print("[Middleware] ❌ Account is banned:", machine_id)
+                return Response("Account banned", status_code=403)
+
+            print("[Middleware] ✅ Account tier:", account.tier)
+            request.state.account = account
+            return await call_next(request)
+
+        finally:
             db.close()
-            return Response("Account banned", status_code=403)
-        request.state.account = account
-        db.close()
-        return await call_next(request)

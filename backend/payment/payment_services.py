@@ -5,6 +5,7 @@ from rate_limiter.rate_limiter_models import MachineAccount, UserTier
 from sqlalchemy.orm import Session
 import json
 import pprint
+from rate_limiter.rate_limiter_services import reset_all_quotas
 
 def get_subscription_status(machine_id, db: Session):
     account = db.query(MachineAccount).filter_by(machine_id=machine_id).first()
@@ -96,9 +97,12 @@ def update_subscription_from_stripe(event, db: Session):
     if account:
         if status == "active":
             account.tier = UserTier.pro
+            db.commit()
+            reset_all_quotas(account, db)
         else:
             account.tier = UserTier.demo
-    db.commit()
+            db.commit()
+            reset_all_quotas(account, db)
 
 def update_subscription_from_invoice(event, db: Session):
     print("[DEBUG] Entered update_subscription_from_invoice")
@@ -176,9 +180,12 @@ def update_subscription_from_invoice(event, db: Session):
     if account:
         if status == "active":
             account.tier = UserTier.pro
+            db.commit()
+            reset_all_quotas(account, db)
         else:
             account.tier = UserTier.demo
-    db.commit()
+            db.commit()
+            reset_all_quotas(account, db)
 
 def reactivate_subscription(machine_id, db: Session):
     subscription = db.query(UserSubscription).filter_by(machine_id=machine_id).first()

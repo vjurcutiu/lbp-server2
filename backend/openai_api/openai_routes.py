@@ -4,6 +4,7 @@ print("[openai_routes.py] openai_routes.py imported")
 from fastapi import APIRouter, Request, Header, Depends
 from fastapi.responses import JSONResponse
 from openai import OpenAI
+import json
 
 from rate_limiter.rate_limiter_dependencies import quota_check
 
@@ -82,7 +83,10 @@ async def openai_keywords(request: Request, x_machine_id: str = Header(None)):
     print("[openai_routes.py] Entered: openai_keywords /api/openai_keywords")
     data = await request.json()
     try:
-        instruction = "Extract keywords from the following text in Romanian."
+        instruction = (
+            "Extract keywords from the following text in Romanian. "
+            "Respond only with a JSON object like: {\"keywords\": [\"keyword1\", \"keyword2\", ...]}"
+        )
         text = data.get("text", "")
         messages = [
             {"role": "system", "content": instruction},
@@ -94,6 +98,12 @@ async def openai_keywords(request: Request, x_machine_id: str = Header(None)):
         }
         response = openai_client.chat.completions.create(**params)
         result = response.choices[0].message.content
-        return JSONResponse(content={"keywords": result})
+        try:
+            # Try to parse the LLM's output as JSON
+            keywords_json = json.loads(result)
+            return JSONResponse(content=keywords_json)
+        except Exception:
+            # Fallback: wrap as string
+            return JSONResponse(content={"keywords": result})
     except Exception as e:
         return format_openai_error(e)

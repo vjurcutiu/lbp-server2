@@ -29,7 +29,7 @@ services:
     environment:
       POSTGRES_USER: fastapi
       POSTGRES_PASSWORD: fastapi
-      POSTGRES_DB: fastapi
+      POSTGRES_DB: fastapi      
     ports:
       - "5433:5432"
     volumes:
@@ -39,7 +39,7 @@ services:
     build:
       context: .                  
       dockerfile: backend/Dockerfile
-    command: uvicorn main:app --host 0.0.0.0 --port 8002
+    command: uvicorn main:app --host 0.0.0.0 --port 8002 --log-level ${LOG_LEVEL}
     ports:
       - "8002:8002"
     restart: always
@@ -47,6 +47,7 @@ services:
       - fastapi-db
     environment:
       DATABASE_URL: postgresql://fastapi:fastapi@fastapi-db:5432/fastapi
+      LOG_LEVEL: debug
     env_file:
       - ./backend/.env
 

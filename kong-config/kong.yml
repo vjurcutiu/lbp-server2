@@ -1,0 +1,8 @@
+services:
+  - name: fastapi-api
+    url: http://fastapi:8002
+    routes:
+      - name: api
+        paths:
+          - '~/api(/.*)?$'
+        strip_path: false

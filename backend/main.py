@@ -54,10 +54,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         content={"detail": exc.detail})
 
 # Serve frontend at /
-if os.path.isdir("frontend_build"):
-    app.mount("/", StaticFiles(directory="frontend_build", html=True), name="static")
-else:
-    print("frontend_build directory not found, skipping static mount")
+
 
 # Add middleware to the main app for API routes
 db_factory = SessionLocal
@@ -76,6 +73,11 @@ app.include_router(user_router, prefix="/api")
 app.include_router(payment_router, prefix="/api")
 app.include_router(pinecone_router, prefix="/api")
 app.include_router(update_router, prefix="/api")
+
+if os.path.isdir("frontend_build"):
+    app.mount("/", StaticFiles(directory="frontend_build", html=True), name="static")
+else:
+    print("frontend_build directory not found, skipping static mount")
 
 # Log all routes for verification
 logger = logging.getLogger("uvicorn.error")

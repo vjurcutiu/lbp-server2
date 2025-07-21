@@ -1,4 +1,4 @@
-_format_version: "2.1"
+_format_version: "3.0"
 
 services:
   - name: fastapi
@@ -6,7 +6,7 @@ services:
     routes:
       - name: fastapi-root
         paths:
-          - /api
+          - '~/api(/.*)?$'
         strip_path: false
         methods:
           - GET

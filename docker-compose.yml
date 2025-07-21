@@ -4,6 +4,7 @@ services:
     image: kong:3.6
     environment:
       KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
@@ -20,6 +21,7 @@ services:
       - "8001:8001" 
     volumes:
       - ./certs:/certs:ro
+      - ./kong-config:/kong/declarative:ro
 
   fastapi-db:
     image: postgres:13

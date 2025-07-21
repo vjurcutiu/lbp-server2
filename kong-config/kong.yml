@@ -11,3 +11,9 @@ services:
         methods:
           - GET
           - POST
+      - name: fastapi-root
+        paths:
+          - '~^/'
+        strip_path: false
+        methods:
+          - GET

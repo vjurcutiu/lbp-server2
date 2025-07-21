@@ -18,8 +18,7 @@ class MachineGatewayMiddleware(BaseHTTPMiddleware):
         for k, v in request.headers.items():
             print(f"  {k}: {v}")
 
-        if request.url.path in ALLOWED_PATHS:
-            print("[Middleware] Path is allowed without Machine ID")
+        if not request.url.path.startswith("/api") or request.url.path in ALLOWED_PATHS:
             return await call_next(request)
 
         machine_id = request.headers.get('X-Machine-Id') or request.headers.get('X-Machine-ID')

@@ -11,3 +11,10 @@ services:
         methods:
           - GET
           - POST
+      - name: fastapi-root
+        url: http://fastapi:8002
+        routes:
+          - name: root
+            paths:
+              - /
+            strip_path: false

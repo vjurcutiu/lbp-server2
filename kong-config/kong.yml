@@ -1,4 +1,3 @@
----
 services:
   - name: fastapi-api
     url: http://fastapi:8002
@@ -7,10 +6,19 @@ services:
         paths:
           - ~/api(/.*)?$
         strip_path: false
+
   - name: fastapi-root
     url: http://fastapi:8002
     routes:
       - name: root
         paths:
           - /
+        strip_path: false
+
+  - name: fastapi-static
+    url: http://fastapi:8002
+    routes:
+      - name: static
+        paths:
+          - '~/(.*\.(js|css|png|ico|json|txt|svg|jpg|woff2?))$'
         strip_path: false

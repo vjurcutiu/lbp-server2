@@ -1,3 +1,4 @@
+---
 services:
   - name: fastapi-api
     url: http://fastapi:8002

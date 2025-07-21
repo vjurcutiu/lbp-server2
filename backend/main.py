@@ -13,6 +13,7 @@ import os
 
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from fastapi.routing import APIRoute
 
 load_dotenv()
 
@@ -50,6 +51,7 @@ app.include_router(update_router, prefix="/api")
 import logging
 logger = logging.getLogger("uvicorn.error")
 for route in app.routes:
-    logger.info(f"[ROUTE] {route.path} METHODS: {route.methods}")
+    if isinstance(route, APIRoute):
+        logger.info(f"[ROUTE] {route.path} METHODS: {route.methods}")
 
 print("[main.py] All routers registered on /api via direct include")

@@ -1,20 +1,16 @@
-_format_version: "3.0"
 
 services:
-  - name: fastapi
+  - name: fastapi-api
     url: http://fastapi:8002
     routes:
-      - name: fastapi-root
+      - name: api
         paths:
           - '~/api(/.*)?$'
         strip_path: false
-        methods:
-          - GET
-          - POST
-      - name: fastapi-root
-        url: http://fastapi:8002
-        routes:
-          - name: root
-            paths:
-              - /
-            strip_path: false
+  - name: fastapi-root
+    url: http://fastapi:8002
+    routes:
+      - name: root
+        paths:
+          - /
+        strip_path: false

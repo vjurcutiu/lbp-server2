@@ -20,5 +20,5 @@ services:
     routes:
       - name: static
         paths:
-          - ~/(.*\.(js|css|png|ico|json|txt|svg|jpg|woff2?))$
+          - '~/(.*\.(js|css|png|ico|json|txt|svg|jpg|woff2?))$'
         strip_path: false

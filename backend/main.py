@@ -7,7 +7,7 @@ from openai_api.openai_routes import router as openai_router
 from payment.payment_routes import router as payment_router
 from tiers.tiers_routes import router as user_router
 from pinecone_engine.pinecone_engine_routes import router as pinecone_router
-from updates.update_routes import router as update_router  # <-- Add this at the top with other imports
+from updates.update_routes import router as update_router
 
 import os
 
@@ -28,12 +28,10 @@ if os.path.isdir("frontend_build"):
 else:
     print("frontend_build directory not found, skipping static mount")
 
-# --------- API sub-app with middleware ----------
-api_app = FastAPI()
-
-# Add your middleware to the API app
-api_app.add_middleware(MachineGatewayMiddleware, db_session_factory=SessionLocal)
-api_app.add_middleware(
+# Add middleware to the main app for API routes
+db_factory = SessionLocal
+app.add_middleware(MachineGatewayMiddleware, db_session_factory=db_factory)
+app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
@@ -41,21 +39,17 @@ api_app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount all API routers on the sub-app
-api_app.include_router(openai_router, prefix="")
-api_app.include_router(user_router, prefix="")
-api_app.include_router(payment_router, prefix="")
-api_app.include_router(pinecone_router, prefix="")
-api_app.include_router(update_router, prefix="")
+# Include all API routers with the /api prefix
+app.include_router(openai_router, prefix="/api")
+app.include_router(user_router, prefix="/api")
+app.include_router(payment_router, prefix="/api")
+app.include_router(pinecone_router, prefix="/api")
+app.include_router(update_router, prefix="/api")
 
-# Mount /api so all requests to /api/* go through the sub-app and its middleware
-app.mount("/api", api_app)
-
-# (No need to include routers on the main app anymore!)
-
-print("[main.py] All routers registered on /api (via sub-app)")
-
+# Log all routes for verification
 import logging
 logger = logging.getLogger("uvicorn.error")
-for route in api_app.routes:
+for route in app.routes:
     logger.info(f"[ROUTE] {route.path} METHODS: {route.methods}")
+
+print("[main.py] All routers registered on /api via direct include")

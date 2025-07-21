@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from database import engine, Base, SessionLocal
 
@@ -15,6 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from fastapi.routing import APIRoute
 
+# --- New: For 405 exception handler ---
+from fastapi.responses import JSONResponse
+from starlette.exceptions import MethodNotAllowed
+import logging
+
 load_dotenv()
 
 # DB: Create tables on startup
@@ -22,6 +27,26 @@ Base.metadata.create_all(bind=engine)
 
 # Main FastAPI app (serves static files and mounts /api)
 app = FastAPI()
+
+# --- New: Middleware to log all incoming requests ---
+@app.middleware("http")
+async def log_request_method(request: Request, call_next):
+    logger = logging.getLogger("uvicorn.error")
+    logger.info(f"[REQUEST] {request.method} {request.url.path}")
+    response = await call_next(request)
+    return response
+
+# --- New: Custom 405 handler to log allowed methods ---
+@app.exception_handler(MethodNotAllowed)
+async def method_not_allowed_handler(request: Request, exc: MethodNotAllowed):
+    logger = logging.getLogger("uvicorn.error")
+    logger.error(
+        f"[405] Method Not Allowed: {request.method} {request.url.path} | Allowed: {exc.allowed_methods}"
+    )
+    return JSONResponse(
+        status_code=405,
+        content={"detail": f"Method Not Allowed: {request.method} {request.url.path}"}
+    )
 
 # Serve frontend at /
 if os.path.isdir("frontend_build"):
@@ -48,7 +73,6 @@ app.include_router(pinecone_router, prefix="/api")
 app.include_router(update_router, prefix="/api")
 
 # Log all routes for verification
-import logging
 logger = logging.getLogger("uvicorn.error")
 for route in app.routes:
     if isinstance(route, APIRoute):

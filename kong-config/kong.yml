@@ -6,9 +6,7 @@ services:
     routes:
       - name: fastapi-root
         paths:
-          - /api
-          - /api/
-          - ~^/api/.*$
+          - ~^/api(/.*)?$
         strip_path: false
         methods:
           - GET

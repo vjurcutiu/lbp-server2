@@ -17,7 +17,7 @@ from fastapi.routing import APIRoute
 
 # --- New: For 405 exception handler ---
 from fastapi.responses import JSONResponse
-from starlette.exceptions import MethodNotAllowed
+from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 
 load_dotenv()
@@ -37,16 +37,21 @@ async def log_request_method(request: Request, call_next):
     return response
 
 # --- New: Custom 405 handler to log allowed methods ---
-@app.exception_handler(MethodNotAllowed)
-async def method_not_allowed_handler(request: Request, exc: MethodNotAllowed):
-    logger = logging.getLogger("uvicorn.error")
-    logger.error(
-        f"[405] Method Not Allowed: {request.method} {request.url.path} | Allowed: {exc.allowed_methods}"
-    )
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 405:
+        logger = logging.getLogger("uvicorn.error")
+        logger.error(
+            f"[405] Method Not Allowed: {request.method} {request.url.path} | Detail: {exc.detail}"
+        )
+        return JSONResponse(
+            status_code=405,
+            content={"detail": f"Method Not Allowed: {request.method} {request.url.path}"}
+        )
+    # Let all other HTTPExceptions pass through
     return JSONResponse(
-        status_code=405,
-        content={"detail": f"Method Not Allowed: {request.method} {request.url.path}"}
-    )
+        status_code=exc.status_code,
+        content={"detail": exc.detail})
 
 # Serve frontend at /
 if os.path.isdir("frontend_build"):

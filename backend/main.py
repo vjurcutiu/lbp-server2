@@ -1,7 +1,14 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from database import engine, Base, SessionLocal
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
+import os
+import logging
+from dotenv import load_dotenv
+
+# --- Your database, routers, and middleware imports ---
+from database import engine, Base, SessionLocal
 from rate_limiter.rate_limiter_middleware import MachineGatewayMiddleware
 from openai_api.openai_routes import router as openai_router
 from payment.payment_routes import router as payment_router
@@ -9,31 +16,21 @@ from tiers.tiers_routes import router as user_router
 from pinecone_engine.pinecone_engine_routes import router as pinecone_router
 from updates.update_routes import router as update_router
 
-import os
-
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 from fastapi.routing import APIRoute
 
-
-
-# --- New: For 405 exception handler ---
-from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
-import logging
-
+# --- Setup ---
 load_dotenv()
 
-INDEX_FILE = os.path.join("frontend_build", "index.html")
+FRONTEND_BUILD_DIR = "frontend_build"
+INDEX_FILE = os.path.join(FRONTEND_BUILD_DIR, "index.html")
 
-
-# DB: Create tables on startup
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
-# Main FastAPI app (serves static files and mounts /api)
 app = FastAPI()
 
-# --- New: Middleware to log all incoming requests ---
+# --- Logging middleware (optional) ---
 @app.middleware("http")
 async def log_request_method(request: Request, call_next):
     logger = logging.getLogger("uvicorn.error")
@@ -41,9 +38,15 @@ async def log_request_method(request: Request, call_next):
     response = await call_next(request)
     return response
 
-# --- New: Custom 405 handler to log allowed methods ---
+# --- 405 handler (optional, for nicer errors) ---
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    # SPA fallback for 404: serve index.html if NOT /api and GET/HEAD
+    if exc.status_code == 404 and request.method in ("GET", "HEAD"):
+        if not request.url.path.startswith("/api"):
+            if os.path.isfile(INDEX_FILE):
+                return FileResponse(INDEX_FILE)
+    # 405 Method Not Allowed: log it and show better message
     if exc.status_code == 405:
         logger = logging.getLogger("uvicorn.error")
         logger.error(
@@ -53,15 +56,13 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             status_code=405,
             content={"detail": f"Method Not Allowed: {request.method} {request.url.path}"}
         )
-    # Let all other HTTPExceptions pass through
+    # All other errors
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail})
+        content={"detail": exc.detail}
+    )
 
-# Serve frontend at /
-
-
-# Add middleware to the main app for API routes
+# --- CORS and custom middleware ---
 db_factory = SessionLocal
 app.add_middleware(MachineGatewayMiddleware, db_session_factory=db_factory)
 app.add_middleware(
@@ -72,23 +73,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include all API routers with the /api prefix
+# --- Routers ---
 app.include_router(openai_router, prefix="/api")
 app.include_router(user_router, prefix="/api")
 app.include_router(payment_router, prefix="/api")
 app.include_router(pinecone_router, prefix="/api")
 app.include_router(update_router, prefix="/api")
 
-if os.path.isdir("frontend_build"):
-    app.mount("/", StaticFiles(directory="frontend_build", html=True), name="static")
+# --- Serve the React build from "/" ---
+if os.path.isdir(FRONTEND_BUILD_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_BUILD_DIR, html=False), name="static")
 else:
     print("frontend_build directory not found, skipping static mount")
 
-@app.get("/{path:path}", include_in_schema=False)
-async def spa_fallback(path: str):
-    return FileResponse(INDEX_FILE)
-
-# Log all routes for verification
+# --- Log routes at startup (optional) ---
 logger = logging.getLogger("uvicorn.error")
 for route in app.routes:
     if isinstance(route, APIRoute):

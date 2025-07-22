@@ -1,91 +1,116 @@
-import React, { useEffect } from "react";
+import React, { useState } from "react";
+import AboutModal from "./AboutModal";
 import { Bot } from "lucide-react";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 
-/**
- * Home page with a fullscreen gradient background and a centered, floating robot icon.
- * Pointer-tracking and floating are handled by Framer Motion.
- * Ensure Framer Motion is installed:  npm i framer-motion
- */
+const ICON_SIZE = 120;
+const HOVER_COLOR = "#747bff";
+
+function MenuLink({ href, children, onClick }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <a
+      href={href}
+      onClick={onClick}
+      style={{
+        color: hovered ? HOVER_COLOR : "#222",
+        fontWeight: 500,
+        fontSize: "1.1rem",
+        textDecoration: "none",
+        marginRight: children === "About" ? 24 : 0,
+        letterSpacing: "0.04em",
+        opacity: 0.92,
+        transition: "color 0.18s, opacity 0.2s",
+        cursor: "pointer",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {children}
+    </a>
+  );
+}
+
 const Home = () => {
-  // Motion values track pointer position → rotations
-  const xMv = useMotionValue(-0.4); // default yaw ≈ -8°
-  const yMv = useMotionValue(-0.75); // default pitch ≈ 12°
-
-  const rotateY = useTransform(xMv, [-1, 1], [-20, 20]);
-  const rotateX = useTransform(yMv, [-1, 1], [16, -16]);
-
-  // Subtle perpetual float
-  const floatMv = useMotionValue(0);
-  useEffect(() => {
-    const controls = animate(floatMv, [0, -8, 0, 6, 0], {
-      duration: 8,
-      repeat: Infinity,
-      ease: "easeInOut",
-    });
-    return controls.stop;
-  }, [floatMv]);
-
-  // Pointer tracking
-  useEffect(() => {
-    function handlePointerMove(e) {
-      const { innerWidth, innerHeight } = window;
-      const nx = (e.clientX / innerWidth) * 2 - 1;
-      const ny = (e.clientY / innerHeight) * 2 - 1;
-      xMv.set(nx);
-      yMv.set(ny);
-    }
-
-    function handlePointerLeave() {
-      animate(xMv, -0.4, { type: "spring", stiffness: 120, damping: 15 });
-      animate(yMv, -0.75, { type: "spring", stiffness: 120, damping: 15 });
-    }
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerleave", handlePointerLeave);
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerleave", handlePointerLeave);
-    };
-  }, [xMv, yMv]);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   return (
-    // Full-viewport wrapper
     <div
-      className="fixed inset-0 flex items-center justify-center overflow-hidden"
       style={{
-        background: "linear-gradient(135deg, #c9d0dc 0%, #646f7c 100%)",
-        boxShadow: "inset 0 0 140px #e5e7eb, inset 0 0 240px #374151",
-        height: "100%"
+        minHeight: "100vh",
+        background: "#fff",
+        color: "#222",
+        fontFamily: "sans-serif",
+        
       }}
     >
-      <div className="flex flex-col items-center" style={{ perspective: 1200 }}>
-        <motion.div
-          style={{
-            rotateX,
-            rotateY,
-            y: floatMv,
-            scale: 1.15,
-            transformStyle: "preserve-3d",
-            willChange: "transform, filter",
-            filter:
-              "drop-shadow(0 8px 60px #a1a6b0) drop-shadow(0 2px 24px #a5a6b5)",
+      {/* Header */}
+      <header
+        style={{
+          width: "100vw",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          padding: "32px 48px 0 0",
+          background: "rgba(255,255,255,0.02)",
+          backdropFilter: "blur(2px)",
+          zIndex: 100,
+          gap: "24px",
+          boxSizing: "border-box",
+          height: 90,
+        }}
+      >
+        <MenuLink
+          href="#"
+          onClick={e => {
+            e.preventDefault();
+            setAboutOpen(true);
           }}
-          transition={{ type: "spring", stiffness: 80, damping: 15 }}
         >
-          <Bot size={180} className="text-[#f6f6fa]" />
-        </motion.div>
+          about
+        </MenuLink>
+        <MenuLink href="/download">download</MenuLink>
+      </header>
 
-        <h1
-          className="text-5xl font-extrabold tracking-tight mt-6 text-[#f7f7f9]"
+      {/* Centered icon with absolutely positioned text above */}
+      <div
+        style={{
+          height: "100vh",
+          width: "100vw",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+        }}
+      >
+        {/* Text above the icon, absolutely positioned */}
+        <div
           style={{
-            textShadow: "0 4px 28px #aeb8c9, 0 1px 30px #7a8295",
-            letterSpacing: "0.05em",
+            position: "absolute",
+            top: "calc(50% - 96px)",
+            left: "50%",
+            transform: "translate(-50%, -100%)",
+            fontSize: "2.1rem",
+            fontWeight: 800,
+            letterSpacing: "0.06em",
+            color: "#222",
+            textShadow: "0 1px 4px #fff, 0 2px 12px #eee",
+            pointerEvents: "none",
           }}
         >
           LexBot PRO
-        </h1>
+        </div>
+        {/* Icon dead center */}
+        <div>
+          <img src="icon.png" alt="LexBot" style={{ width: ICON_SIZE, height: ICON_SIZE }} />
+          {/* <Bot size={ICON_SIZE} color="#222" /> */}
+        </div>
       </div>
+
+      {/* Modal */}
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
 };

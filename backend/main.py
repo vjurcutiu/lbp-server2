@@ -16,11 +16,14 @@ from dotenv import load_dotenv
 from fastapi.routing import APIRoute
 
 # --- New: For 405 exception handler ---
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 
 load_dotenv()
+
+INDEX_FILE = os.path.join("frontend_build", "index.html")
+
 
 # DB: Create tables on startup
 Base.metadata.create_all(bind=engine)
@@ -78,6 +81,18 @@ if os.path.isdir("frontend_build"):
     app.mount("/", StaticFiles(directory="frontend_build", html=True), name="static")
 else:
     print("frontend_build directory not found, skipping static mount")
+
+@app.get("/{path_name:path}", response_class=HTMLResponse, include_in_schema=False)
+async def spa_fallback(path_name: str):
+    """
+    Catch-all for client-side routes
+    – anything that is NOT /api/** and NOT an existing static asset.
+    """
+    if os.path.isfile(INDEX_FILE):
+        # Send the React entry point so the browser router can take over
+        return FileResponse(INDEX_FILE)
+    # If the build folder is missing raise a 404 instead of crashing
+    raise StarletteHTTPException(status_code=404, detail="index.html not found")
 
 # Log all routes for verification
 logger = logging.getLogger("uvicorn.error")

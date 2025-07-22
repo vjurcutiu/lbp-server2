@@ -15,7 +15,4 @@ services:
       - name: root
         paths:
           - /
-          - /payment-success
-          - /payment-cancel
-          - /download
         strip_path: false

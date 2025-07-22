@@ -14,5 +14,5 @@ services:
     routes:
       - name: root
         paths:
-          - /
+        - ~/(.*)
         strip_path: false

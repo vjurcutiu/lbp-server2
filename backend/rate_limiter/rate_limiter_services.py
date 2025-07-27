@@ -47,8 +47,13 @@ def check_and_increment_usage(db, machine_id: str, tier: str, feature: str):
     #    usage.reset_at = datetime.utcnow()
     #    from rate_limiter.rate_limiter_config import TIER_LIMITS
     #    usage.limit = TIER_LIMITS[tier][feature]
-    #    db.commit()
-    if usage.used >= usage.limit:
+    #    db.commit()    
+    current_limit = TIER_LIMITS[tier][feature]
+    if usage.limit != current_limit:
+        print(f"[RateLimiter] Updating limit for {machine_id} {feature} from {usage.limit} to {current_limit}")
+        usage.limit = current_limit
+        db.commit()
+    if usage.used >= current_limit:
         return False
     usage.used += 1
     db.commit()

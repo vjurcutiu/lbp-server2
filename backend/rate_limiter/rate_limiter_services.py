@@ -31,7 +31,6 @@ def get_usage(db, machine_id: str, feature: str) -> UsageStats:
 def check_and_increment_usage(db, machine_id: str, tier: str, feature: str):
     usage = get_usage(db, machine_id, feature)
     if not usage:
-        from rate_limiter.rate_limiter_config import TIER_LIMITS
         usage = UsageStats(
             machine_id=machine_id,
             feature_name=feature,
@@ -60,7 +59,6 @@ def check_and_increment_usage(db, machine_id: str, tier: str, feature: str):
     return True
 
 def reset_all_quotas(account: MachineAccount, db):
-    from rate_limiter.rate_limiter_config import TIER_LIMITS
     for feature, limit in TIER_LIMITS[account.tier.value].items():
         usage = get_usage(db, account.machine_id, feature)
         if usage:

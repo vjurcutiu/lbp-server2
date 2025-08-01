@@ -16,6 +16,7 @@ from tiers.tiers_routes import router as user_router
 from pinecone_engine.pinecone_engine_routes import router as pinecone_router
 from updates.update_routes import router as update_router
 from rate_limiter.rate_limiter_routes import router as rate_limiter_router
+from metadata.metadata_generator_routes import router as metadata_generator_router
 
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -82,6 +83,7 @@ app.include_router(payment_router, prefix="/api")
 app.include_router(pinecone_router, prefix="/api")
 app.include_router(update_router, prefix="/api")
 app.include_router(rate_limiter_router, prefix="/api")
+app.include_router(metadata_generator_router, prefix= "/api")
 
 # --- Serve the React build from "/" ---
 if os.path.isdir(FRONTEND_BUILD_DIR):
